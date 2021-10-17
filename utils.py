@@ -467,14 +467,17 @@ class DisplayManager(object):
         ## observe event
         self._test_period_widget.observe(content_manager.testPeriodOnChange)
         self._moving_window_size_widget.observe(content_manager.movingWindowSizeOnChange)
-        self._y_column_widget.observe(content_manager.yColumnOnChange)
+        self._y_column_widget.observe(self._yColumnOnChange)
         self._tree_max_depth_widget.observe(content_manager.treeMaxDepthOnChange)        
         self._real_prediction_button.on_click(self._realPredictionButtonOnClick)
         self._valid_prediction_button.on_click(self._validPredictionButtonOnClick)
         
         
         ## valid data
-        valid_column_list = self._content_manager.x_column_list + [self._content_manager.y_column]
+        valid_column_list = self._content_manager.x_column_list
+        self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
+        self._y_fr.observe(self._handleSliderChange)
+        
         self._valid_fr_list = []
         for v_col in valid_column_list:
             fr = self._makeFloatRangeSlider(v_col)
@@ -526,6 +529,14 @@ class DisplayManager(object):
         self._content_manager.showTree()
         self._content_manager.showFeatureImportances()
         
+    
+    def _yColumnOnChange(self, change):
+        if change['name'] == 'value':
+            self._content_manager.yColumnOnChange(change)
+            self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
+            self._y_fr.observe(self._handleSliderChange)
+        
+        
     def displayHyperParamDashboard(self):
         display(widgets.Box([
             widgets.Label(value='想預測幾筆：'),
@@ -552,6 +563,7 @@ class DisplayManager(object):
     def displayValidDashboard(self):
         for fr in self._valid_fr_list:
             display(fr, self._output)
+        display(self._y_fr, self._output)
         display(self._valid_prediction_button, self._output)
             
     def _validPredictionButtonOnClick(self, b):
@@ -565,6 +577,11 @@ class DisplayManager(object):
                     fr.value[0],
                     fr.value[1]
                 )
+            self._content_manager.makeValidData(
+                self._y_fr.description,
+                self._y_fr.value[0],
+                self._y_fr.value[1]
+            )
             self._content_manager.buildValidDataset()
             clear_output()
             self.displayValidDashboard()
