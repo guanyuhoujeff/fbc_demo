@@ -16,31 +16,45 @@ import time
 
 
 class ContentManager(object):
-    x_column_list = [ "X%d"%i for i in range(6, 11) ]
-    
-    y_column_maplist = {
-        "氧 O2": 'Y1',
-        "二氧化碳 CO2": 'Y2',
-        "一氧化碳 CO_6% O2": 'Y3',
-        "氮氧化合物 NOx_6% O2": 'Y4',
-        "二氧化硫 SO2": "Y5"
-    }
-    y_column_name_maplist = {
-        'Y1': "氧 O2" ,
-        'Y2': "二氧化碳 CO2" ,
-        'Y3': "一氧化碳 CO_6% O2" ,
-        'Y4': "氮氧化合物 NOx_6% O2" ,
-        "Y5": "二氧化硫 SO2"
-    }
+    """本資料共計風速5個欄位；風向4個欄位
+    逐十分鐘一筆
+    統計資料區間 = 2021/08/01 00:00:01 ~ 2021/10/01 00:00:00
 
+
+    欄位代碼解說：
+    ．儀器類型+高度_N分鐘統計數據
+    ．WS = Wind Speed（風速計，單位：m/s = 公尺/秒）
+    ．WD = Wind Direction（風向計，單位：度）
+    ．10mAVG = 10分鐘平均值
+
+    例如：WS95A_10mAVG ，即代表「95公尺高度風速計A的10分鐘統計資料」
+    ※僅95公尺風速計有2支，所以最後會多帶有A、B之尾碼 
+    """
     def __init__(self,this_window_width = 1200):
+        self.y_column_name_maplist = {
+            'WS10_10mAVG' : '10公尺高度-風速計', 
+            'WS30_10mAVG' : '30公尺高度-風速計', 
+            'WS50_10mAVG' : '50公尺高度-風速計', 
+            'WS95A_10mAVG' : '95公尺高度-風速計A', 
+            'WS95B_10mAVG' : '95公尺高度-風速計B', 
+            'WD10_10mAVG' : '10公尺高度-風向計', 
+            'WD30_10mAVG' : '30公尺高度-風向計', 
+            'WD50_10mAVG' : '50公尺高度-風向計', 
+            'WD95_10mAVG' : '95公尺高度-風向計', 
+        }
+        self.x_column_list = list(self.y_column_name_maplist.keys())
+        self.y_column_maplist = { self.y_column_name_maplist[k]:  k for k in list(self.y_column_name_maplist.keys())}
+    
+    
         self._this_window_width = this_window_width
         
         ## 原始資料
-        self.origin_data = pd.read_csv(
-            io.StringIO(
-                requests.get('https://recognise.trendlink.io/model/fbc_demo.csv', verify=False).content.decode('utf-8')
-            ))
+        # self.origin_data = pd.read_csv(
+        #     io.StringIO(
+        #         requests.get('https://recognise.trendlink.io/model/wind_demo.txt', verify=False).content.decode('utf-8')
+        #     )
+        # )
+        self.origin_data = pd.read_csv('./wind_demo.txt')
         #self.data = origin_data.copy()
         
         ## 測試期間
@@ -50,7 +64,7 @@ class ContentManager(object):
         self.moving_window_size = 360
         
         ## y 欄位
-        self.y_column = 'Y3'
+        self.y_column = self.x_column_list[0]
         
         ## 決策樹深度參數
         self.tree_max_depth = 3
@@ -76,13 +90,7 @@ class ContentManager(object):
 
         ##模型輸入特徵lag處理
         self.feature_col = []
-        for lag in range(self.moving_window_size+1):
-            ## y 
-            if lag>0:
-                _y_lag = "%s_%d"%(self.y_column, lag)
-                data[_y_lag] = data[self.y_column].shift(lag)
-                self.feature_col.append(_y_lag)
-            
+        for lag in range(1, self.moving_window_size+1):
             for x_column in self.x_column_list:
                 _x_lag = "%s_%d"%(x_column, lag)
                 data[_x_lag] = data[x_column].shift(lag)
@@ -151,14 +159,7 @@ class ContentManager(object):
         fig.add_trace(
             go.Table(
                 header=dict(
-                    values=[
-                        'time',
-                        "X6<br>溫度1床材", 
-                        "X7<br>溫度2爐下", 
-                        "X8<br>溫度3爐中下",
-                        "X9<br>溫度4爐中上", 
-                        "X10<br>溫度5爐上"
-                    ],
+                    values=['time'] + list(self.y_column_maplist.values()),
                     font=dict(size=10),
                     align="left"
                 ),
@@ -172,7 +173,7 @@ class ContentManager(object):
         fig.update_layout(
             width=self._this_window_width,
             showlegend=True,
-            title_text="燃燒爐資料-輸入",
+            title_text="風向資料",
             legend=dict(y=0.5, traceorder='reversed', font_size=16)
         )
 
@@ -198,7 +199,7 @@ class ContentManager(object):
                     y=display_data[y_col], 
                     name=y_col, 
                     mode='lines+markers',
-                    visible= 'legendonly' if y_col != 'Y3' else None
+                    visible= 'legendonly' if y_col != 'WS10_10mAVG' else None
                 ),
                 row=2, col=1
         )
@@ -222,7 +223,7 @@ class ContentManager(object):
         fig.update_layout(
             width=self._this_window_width,
             showlegend=True,
-            title_text="燃燒爐資料-輸出",
+            title_text="風向資料-輸出",
             legend=dict(y=0.5, traceorder='reversed', font_size=16)
         )
 
@@ -295,7 +296,7 @@ class ContentManager(object):
         fig.update_layout(
             width=self._this_window_width,
             showlegend=True,
-            title_text="燃燒爐資料-預測",
+            title_text="風向資料-預測",
             legend=dict(y=0.5, traceorder='reversed', font_size=16)
         )
 
@@ -339,11 +340,6 @@ class ContentManager(object):
         
         ##模型輸入特徵lag處理
         for lag in range(self.moving_window_size+1):
-            ## y 
-            if lag>0:
-                _y_lag = "%s_%d"%(self.y_column, lag)
-                data[_y_lag] = data[self.y_column].shift(lag)
-            
             for x_column in self.x_column_list:
                 _x_lag = "%s_%d"%(x_column, lag)
                 data[_x_lag] = data[x_column].shift(lag)
@@ -353,8 +349,7 @@ class ContentManager(object):
         self.val_data = data
         self.val_y  = self.val_data[[self.y_column]]
         self.val_x  = self.val_data[self.feature_col]
-        
-        
+     
     def plotVaildData(self):
         display_data = self.val_data.copy()
         display_data['time'] = range(1, display_data.shape[0]+1)
@@ -375,16 +370,7 @@ class ContentManager(object):
         fig.add_trace(
             go.Table(
                 header=dict(
-                    values=[
-                        'time',
-                        "X6<br>溫度1床材", 
-                        "X7<br>溫度2爐下", 
-                        "X8<br>溫度3爐中下",
-                        "X9<br>溫度4爐中上", 
-                        "X10<br>溫度5爐上",
-                        f'真實的{self.y_column}',
-                        f'預測的{self.y_column}'
-                    ],
+                    values=['time'] + list(self.y_column_maplist.values()) + [f'真實的{self.y_column}', f'預測的{self.y_column}'],
                     font=dict(size=10),
                     align="left"
                 ),
@@ -433,7 +419,7 @@ class ContentManager(object):
         fig.update_layout(
             width=self._this_window_width,
             showlegend=True,
-            title_text="模擬燃燒爐資料",
+            title_text="模擬風向資料",
             legend=dict(y=0.5, traceorder='reversed', font_size=16)
         )
 
@@ -478,14 +464,14 @@ class DisplayManager(object):
         
         ## valid data
         valid_column_list = self._content_manager.x_column_list
-        self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
-        self._y_fr.observe(self._handleSliderChange)
+        # self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
+        # self._y_fr.observe(self._handleSliderChange)
         
         self._valid_fr_list = []
         for v_col in valid_column_list:
             fr = self._makeFloatRangeSlider(v_col)
             fr.observe(self._handleSliderChange)
-            self._valid_fr_list.append(fr)
+            self._valid_fr_list.append({"widget": fr, 'name': v_col})
             
     def _makeFloatRangeSlider(self, col_name):
         col_name_value = self._content_manager.train_data[col_name]
@@ -499,13 +485,13 @@ class DisplayManager(object):
             value=[q_25, q_75],
             min= min_v,
             max= max_v,
-            step=0.1,
-            description=col_name,
+            step=(max_v-min_v)/1000,
             disabled=False,
             continuous_update=False,
             orientation='horizontal',
             readout=True,
-            readout_format='.1f'
+            readout_format='.2f',
+            # layout={'width': 'max-content'}
         )
         
         self._content_manager.makeValidData(col_name, q_25, q_75)
@@ -536,8 +522,8 @@ class DisplayManager(object):
     def _yColumnOnChange(self, change):
         if change['name'] == 'value':
             self._content_manager.yColumnOnChange(change)
-            self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
-            self._y_fr.observe(self._handleSliderChange)
+            # self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
+            # self._y_fr.observe(self._handleSliderChange)
         
         
     def displayHyperParamDashboard(self):
@@ -565,8 +551,14 @@ class DisplayManager(object):
         
     def displayValidDashboard(self):
         for fr in self._valid_fr_list:
-            display(fr, self._output)
-        display(self._y_fr, self._output)
+            display(widgets.Box(
+                [
+                    widgets.Label(value=fr['name']),
+                    fr['widget']
+                ]
+            ), self._output)
+            
+            
         display(self._valid_prediction_button, self._output)
             
     def _validPredictionButtonOnClick(self, b):
@@ -576,26 +568,23 @@ class DisplayManager(object):
             ### 重build valid data
             for fr in self._valid_fr_list:
                 self._content_manager.makeValidData(
-                    fr.description,
-                    fr.value[0],
-                    fr.value[1]
+                    fr['name'],
+                    fr['widget'].value[0],
+                    fr['widget'].value[1]
                 )
-            self._content_manager.makeValidData(
-                self._y_fr.description,
-                self._y_fr.value[0],
-                self._y_fr.value[1]
-            )
+                
             self._content_manager.buildValidDataset()
             clear_output()
             self.displayValidDashboard()
             self._content_manager.plotVaildData()
 
-            
-def getWindowWidth():
-    Javascript("""
+
+WINDOW_WIDTH_QUERY = """
     var w = window.screen.width;
     IPython.notebook.kernel.execute("this_window_width="+w);
-    """)
+    """
+def getWindowWidth():
+    Javascript(WINDOW_WIDTH_QUERY)
     if not 'this_window_width' in dir():
         this_window_width = 1920
     return this_window_width
