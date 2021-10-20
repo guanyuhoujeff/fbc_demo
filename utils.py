@@ -33,7 +33,7 @@ class ContentManager(object):
         "Y5": "二氧化硫 SO2"
     }
 
-    def __init__(self,this_window_width = 1200):
+    def __init__(self,this_window_width = 800):
         self._this_window_width = this_window_width
         
         ## 原始資料

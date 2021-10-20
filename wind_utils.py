@@ -30,7 +30,7 @@ class ContentManager(object):
     例如：WS95A_10mAVG ，即代表「95公尺高度風速計A的10分鐘統計資料」
     ※僅95公尺風速計有2支，所以最後會多帶有A、B之尾碼 
     """
-    def __init__(self,this_window_width = 1200):
+    def __init__(self,this_window_width = 800):
         self.y_column_name_maplist = {
             'WS10_10mAVG' : '10公尺高度-風速計', 
             'WS30_10mAVG' : '30公尺高度-風速計', 
@@ -49,12 +49,12 @@ class ContentManager(object):
         self._this_window_width = this_window_width
         
         ## 原始資料
-        # self.origin_data = pd.read_csv(
-        #     io.StringIO(
-        #         requests.get('https://recognise.trendlink.io/model/wind_demo.txt', verify=False).content.decode('utf-8')
-        #     )
-        # )
-        self.origin_data = pd.read_csv('./wind_demo.txt')
+        self.origin_data = pd.read_csv(
+            io.StringIO(
+                requests.get('https://recognise.trendlink.io/model/wind_demo.txt', verify=False).content.decode('utf-8')
+            )
+        )
+        # self.origin_data = pd.read_csv('./wind_demo.txt')
         #self.data = origin_data.copy()
         
         ## 測試期間
