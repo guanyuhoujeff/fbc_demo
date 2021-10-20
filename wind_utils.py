@@ -81,8 +81,7 @@ class ContentManager(object):
         
     def _getOriginData(self):
         try:
-            print('os getcwd >>> ', os.getcwd())
-            return pd.read_csv('wind_demo.txt')
+            return pd.read_csv('/content/fbc_demo/wind_demo.txt')
         except:
             print('讀取網路資源')
             return pd.read_csv(

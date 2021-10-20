@@ -37,11 +37,7 @@ class ContentManager(object):
         self._this_window_width = this_window_width
         
         ## 原始資料
-        self.origin_data = pd.read_csv(
-            io.StringIO(
-                requests.get('https://recognise.trendlink.io/model/fbc_demo.csv', verify=False).content.decode('utf-8')
-            ))
-        #self.data = origin_data.copy()
+        self.origin_data = self._getOriginData() 
         
         ## 測試期間
         self.test_period = 30
@@ -70,7 +66,17 @@ class ContentManager(object):
         self._valid_data_maplist = {}
         self.val_y = None
         self.val_x = None
-        
+
+    def _getOriginData(self):
+        try:
+            return pd.read_csv('/content/fbc_demo/fbc_demo.csv')
+        except:
+            print('讀取網路資源')
+            return pd.read_csv(
+                io.StringIO(
+                    requests.get('https://recognise.trendlink.io/model/fbc_demo.csv', verify=False).content.decode('utf-8')
+                ))
+            
     def buildModelDataset(self):
         data = self.origin_data.copy()
 
