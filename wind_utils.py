@@ -44,17 +44,10 @@ class ContentManager(object):
         }
         self.x_column_list = list(self.y_column_name_maplist.keys())
         self.y_column_maplist = { self.y_column_name_maplist[k]:  k for k in list(self.y_column_name_maplist.keys())}
-    
-    
         self._this_window_width = this_window_width
         
         ## 原始資料
-        self.origin_data = pd.read_csv(
-            io.StringIO(
-                requests.get('https://recognise.trendlink.io/model/wind_demo.txt', verify=False).content.decode('utf-8')
-            )
-        )
-        # self.origin_data = pd.read_csv('./wind_demo.txt')
+        self.origin_data = self._getOriginData()
         #self.data = origin_data.copy()
         
         ## 測試期間
@@ -84,6 +77,18 @@ class ContentManager(object):
         self._valid_data_maplist = {}
         self.val_y = None
         self.val_x = None
+        
+    def _getOriginData(self):
+        try:
+            return pd.read_csv('wind_demo.txt')
+        except:
+            print('讀取網路資源')
+            return pd.read_csv(
+                io.StringIO(
+                    requests.get('https://recognise.trendlink.io/model/wind_demo.txt', verify=False).content.decode('utf-8')
+                )
+            )
+            
         
     def buildModelDataset(self):
         data = self.origin_data.copy()
