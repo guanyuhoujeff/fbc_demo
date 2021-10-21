@@ -8,7 +8,7 @@ import io
 import ipywidgets as widgets
 output = widgets.Output()
 from IPython.display import display, clear_output, Javascript
-from random import randrange
+from random import uniform
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -69,7 +69,11 @@ class ContentManager(object):
 
     def _getOriginData(self):
         try:
+            ### For colab
             return pd.read_csv('/content/fbc_demo/fbc_demo.csv')
+        except FileNotFoundError:
+            ### For local 端
+            return pd.read_csv('fbc_demo.csv')
         except:
             print('讀取網路資源')
             return pd.read_csv(
@@ -335,7 +339,7 @@ class ContentManager(object):
         
     def makeValidData(self, col_name, start_v, end_v):
         self._valid_data_maplist[col_name] = np.array([
-            randrange(int(start_v)*10, int(end_v)*10, step=1)/10 for _ in range(
+            uniform(start_v, end_v) for _ in range(
                 self.moving_window_size+ self.test_period
             )
         ])
