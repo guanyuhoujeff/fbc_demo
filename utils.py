@@ -13,28 +13,35 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
-
+from sklearn.metrics import mean_squared_error
 
 class ContentManager(object):
-    x_column_list = [ "X%d"%i for i in range(6, 11) ]
-    
-    y_column_maplist = {
-        "氧 O2": 'Y1',
-        "二氧化碳 CO2": 'Y2',
-        "一氧化碳 CO_6% O2": 'Y3',
-        "氮氧化合物 NOx_6% O2": 'Y4',
-        "二氧化硫 SO2": "Y5"
-    }
-    y_column_name_maplist = {
-        'Y1': "氧 O2" ,
-        'Y2': "二氧化碳 CO2" ,
-        'Y3': "一氧化碳 CO_6% O2" ,
-        'Y4': "氮氧化合物 NOx_6% O2" ,
-        "Y5": "二氧化硫 SO2"
-    }
-
     def __init__(self,this_window_width = 800):
         self._this_window_width = this_window_width
+        self.x_column_list = [ "X%d"%i for i in range(6, 11) ]
+        self.x_column_name_maplist = {
+            "X6":"溫度1床材", 
+            "X7":"溫度2爐下", 
+            "X8":"溫度3爐中下",
+            "X9":"溫度4爐中上", 
+            "X10":"溫度5爐上",
+        }
+
+        self.y_column_maplist = {
+            "氧 O2": 'Y1',
+            "二氧化碳 CO2": 'Y2',
+            "一氧化碳 CO_6% O2": 'Y3',
+            "氮氧化合物 NOx_6% O2": 'Y4',
+            "二氧化硫 SO2": "Y5"
+        }
+        self.y_column_name_maplist = {
+            'Y1': "氧 O2" ,
+            'Y2': "二氧化碳 CO2" ,
+            'Y3': "一氧化碳 CO_6% O2" ,
+            'Y4': "氮氧化合物 NOx_6% O2" ,
+            "Y5": "二氧化硫 SO2"
+        }
+    
         
         ## 原始資料
         self.origin_data = self._getOriginData() 
@@ -58,7 +65,7 @@ class ContentManager(object):
         self.train_x = None
         self.test_y = None
         self.test_x = None
-        self.buildModelDataset()
+        self._buildModelDataset()
         
         self._model = None
         
@@ -80,8 +87,14 @@ class ContentManager(object):
                 io.StringIO(
                     requests.get('https://recognise.trendlink.io/model/fbc_demo.csv', verify=False).content.decode('utf-8')
                 ))
+    def _trainModel(self):
+        self._model = DecisionTreeRegressor(max_depth=self.tree_max_depth)
+        self._model.fit(
+            self.train_x.values, 
+            self.train_y.values
+        )
             
-    def buildModelDataset(self):
+    def _buildModelDataset(self):
         data = self.origin_data.copy()
 
         ##模型輸入特徵lag處理
@@ -107,37 +120,6 @@ class ContentManager(object):
         self.test_x  = self.test_data[self.feature_col]
         #print('Training index : ',  train_data.index[0], "~", train_data.index[-1])
         #print('Testing  index : ',  test_data.index[0], "~", test_data.index[-1])
-        
-    def testPeriodOnChange(self, change):
-        if change['name'] == 'value':
-            self.test_period = change['new']
-            
-    def movingWindowSizeOnChange(self, change):
-        if change['name'] == 'value':
-            self.moving_window_size = change['new']
-            
-    def treeMaxDepthOnChange(self, change):
-        if change['name'] == 'value':
-            self.tree_max_depth = change['new']
-
-    def yColumnOnChange(self, change):
-        if change['name'] == 'value':
-            self.y_column = self.y_column_maplist[change['new']]
-            
-    def dataProcessingButtonOnClick(self, button_event):
-        self.buildModelDataset()
-        
-    def modelPredictionButtonOnClick(self, button_event):
-        self.buildModelDataset()
-        self._model = DecisionTreeRegressor(max_depth=self.tree_max_depth)
-        self._model.fit(
-            self.train_x.values, 
-            self.train_y.values
-        )
-        
-    def showPredictionWidgetOnChange(self, change):
-        if change['name'] == 'value':
-            self.plotData(change['new'])
         
     def plotXDataDashboard(self):
         display_data = self.test_data.copy()
@@ -238,8 +220,7 @@ class ContentManager(object):
 
         fig.show()
 
-    def plotPredictionData(self, show_pred=True): 
-
+    def plotPredictionData(self): 
         display_data = self.test_data.copy()
         display_data['time'] = range(1, display_data.shape[0]+1)
                 
@@ -256,16 +237,17 @@ class ContentManager(object):
             display_data['time'].tolist(),
             display_data[self.y_column].tolist(),
         ]
-        
+        msr = None
         if not self._model is None:
             test_prediction = self._model.predict(self.test_x.values)
             display_data['pred'] = test_prediction
+            msr = mean_squared_error(display_data[self.y_column], test_prediction)
             # pred Y
             fig.add_trace(
                 go.Scatter(
                     x=display_data['time'], 
                     y=display_data['pred'], 
-                    name= f'預測的{self.y_column}', 
+                    name= f'預測的{self.y_column_name_maplist[self.y_column]}', 
                     mode='lines+markers',
                     visible= 'legendonly',
                     marker_color='rgba(240, 52, 52, 1)'
@@ -281,7 +263,7 @@ class ContentManager(object):
             go.Scatter(
                 x=display_data['time'], 
                 y=display_data[self.y_column], 
-                name=f'真實的{self.y_column}', 
+                name=f'真實的{self.y_column_name_maplist[self.y_column]}', 
                 mode='lines+markers',
                 marker_color='rgba(44, 130, 201, 1)'
             ),
@@ -302,16 +284,21 @@ class ContentManager(object):
             row=1, col=1
         )
 
+        if not msr is None:
+            title_text = "%s-預測 , 錯誤率：(%.3f)"%(self.y_column_name_maplist[self.y_column], msr)
+        else:
+            title_text = "%s-預測 "%(self.y_column_name_maplist[self.y_column])
+            
         fig.update_layout(
             width=self._this_window_width,
             showlegend=True,
-            title_text="燃燒爐資料-預測",
+            title_text=title_text,
             legend=dict(y=0.5, traceorder='reversed', font_size=16)
         )
 
         fig.show()
 
-    def showFeatureImportances(self, top_k=10):
+    def plotFeatureImportances(self, top_k=10):
         feature_importances = pd.DataFrame(
             self._model.feature_importances_, 
             index=self.train_x.columns, 
@@ -324,7 +311,7 @@ class ContentManager(object):
         fig = px.pie(feature_importances.head(top_k), values='value',  names='name', title=f'前{top_k}個重要的特徵')
         fig.show()
     
-    def showTree(self):
+    def plotTree(self):
         if self.tree_max_depth<5:
             plt.figure(figsize=(40,20))
             _ = tree.plot_tree(
@@ -332,11 +319,8 @@ class ContentManager(object):
                 feature_names=self.train_x.columns,
                 filled=True
             )
-        #else:
-        #    fig = make_subplots(rows=1, cols=1)
-        #    fig.update_layout(height=100, title_text="樹決策圖太大了，畫不出來")
-        #    fig.show()
         
+    ### valid data
     def makeValidData(self, col_name, start_v, end_v):
         self._valid_data_maplist[col_name] = np.array([
             uniform(start_v, end_v) for _ in range(
@@ -363,8 +347,7 @@ class ContentManager(object):
         self.val_data = data
         self.val_y  = self.val_data[[self.y_column]]
         self.val_x  = self.val_data[self.feature_col]
-        
-        
+         
     def plotVaildData(self):
         display_data = self.val_data.copy()
         display_data['time'] = range(1, display_data.shape[0]+1)
@@ -448,7 +431,31 @@ class ContentManager(object):
         )
 
         fig.show()
+
+    ## UI 事件
+    def testPeriodOnChange(self, change):
+        if change['name'] == 'value':
+            self.test_period = change['new']
             
+    def movingWindowSizeOnChange(self, change):
+        if change['name'] == 'value':
+            self.moving_window_size = change['new']
+            self._model = None
+            
+    def treeMaxDepthOnChange(self, change):
+        if change['name'] == 'value':
+            self.tree_max_depth = change['new']
+            self._model = None
+
+    def yColumnOnChange(self, change):
+        if change['name'] == 'value':
+            self.y_column = self.y_column_maplist[change['new']]
+            self._model = None
+                  
+    def modelPredictionButtonOnClick(self, button_event):
+        self._buildModelDataset()
+        self._trainModel()
+        
             
 class DisplayManager(object):
     def __init__(self, output, content_manager: ContentManager):
@@ -469,7 +476,7 @@ class DisplayManager(object):
             layout={'width': 'max-content'}
         )
 
-        self._real_prediction_button = widgets.Button(description="真實資料預測")
+        self._real_prediction_button = widgets.Button(description="訓練模型")
         self._valid_prediction_button = widgets.Button(description="模擬資料預測")
         
         self._tree_max_depth_widget = widgets.IntText(
@@ -487,10 +494,10 @@ class DisplayManager(object):
         
         
         ## valid data
-        valid_column_list = self._content_manager.x_column_list
         self._y_fr = self._makeFloatRangeSlider(self._content_manager.y_column)
         self._y_fr.observe(self._handleSliderChange)
         
+        valid_column_list = self._content_manager.x_column_list
         self._valid_fr_list = []
         for v_col in valid_column_list:
             fr = self._makeFloatRangeSlider(v_col)
@@ -539,8 +546,8 @@ class DisplayManager(object):
         clear_output()
         self.displayHyperParamDashboard()
         self._content_manager.plotPredictionData()
-        self._content_manager.showTree()
-        self._content_manager.showFeatureImportances()
+        self._content_manager.plotTree()
+        self._content_manager.plotFeatureImportances()
         
     
     def _yColumnOnChange(self, change):
@@ -581,9 +588,12 @@ class DisplayManager(object):
             
     def _validPredictionButtonOnClick(self, b):
         if self._content_manager._model is None:
+            clear_output()
+            self.displayValidDashboard()
             print("請先訓練模型")
         else:
             ### 重build valid data
+            self._content_manager._valid_data_maplist = {}
             for fr in self._valid_fr_list:
                 self._content_manager.makeValidData(
                     fr.description,

@@ -15,6 +15,7 @@ from plotly.subplots import make_subplots
 import time
 import os
 from datetime import datetime, date
+from sklearn.metrics import mean_squared_error
 
 class ContentManager(object):
     """本資料共計風速5個欄位；風向4個欄位
@@ -201,9 +202,10 @@ class ContentManager(object):
             display_data['recordTime'].tolist(),
             display_data[the_y_feature['model']].tolist(),
         ]
-        
+        msr = None
         if not self._model is None:
             # pred Y
+            msr = mean_squared_error(display_data[the_y_feature['model']].values, display_data['pred'].values)
             fig.add_trace(
                 go.Scatter(
                     x=display_data['recordTime'], 
@@ -245,10 +247,15 @@ class ContentManager(object):
             row=1, col=1
         )
         
+        if not msr is None:
+            title_text = "%s-預測 (%s) , 錯誤率：(%.3f)"%(the_y_feature['name'], self._feature_type_title[the_y_feature['type']], msr)
+        else:
+            title_text = "%s-預測 (%s)"%(the_y_feature['name'], self._feature_type_title[the_y_feature['type']])
+            
         fig.update_layout(
             width=self._this_window_width,
             showlegend=True,
-            title_text="%s-預測 (%s)"%(the_y_feature['name'], self._feature_type_title[the_y_feature['type']]),
+            title_text=title_text,
             legend=dict(y=0.5, traceorder='reversed', font_size=16)
         )
         fig.show()   
@@ -337,9 +344,6 @@ class ContentManager(object):
                     self.y_feature =  f
                     self._model = None
                     break
-            
-    def dataProcessingButtonOnClick(self, button_event):
-        self._buildModelDataset()
         
     def modelPredictionButtonOnClick(self, button_event):
         self._buildModelDataset()
@@ -370,7 +374,7 @@ class DisplayManager(object):
             layout={'width': 'max-content'}
         )
 
-        self._real_prediction_button = widgets.Button(description="真實資料預測")
+        self._real_prediction_button = widgets.Button(description="訓練模型")
         self._valid_prediction_button = widgets.Button(description="模擬資料預測")
         
         self._tree_max_depth_widget = widgets.IntText(
