@@ -16,7 +16,7 @@ import time
 from sklearn.metrics import mean_squared_error
 
 class ContentManager(object):
-    def __init__(self,this_window_width = 800):
+    def __init__(self,this_window_width = 1000):
         self._this_window_width = this_window_width
         self.x_column_list = [ "X%d"%i for i in range(6, 11) ]
         self.x_column_name_maplist = {

@@ -32,7 +32,7 @@ class ContentManager(object):
     例如：WS95A_10mAVG ，即代表「95公尺高度風速計A的10分鐘統計資料」
     ※僅95公尺風速計有2支，所以最後會多帶有A、B之尾碼 
     """
-    def __init__(self,this_window_width = 800):
+    def __init__(self,this_window_width = 1000):
         self.feature_list = [
             {'name': "10公尺風速器", 'type': 'ws', 'column' : 'WS10_10mAVG', 'model' : 'WS10_10mAVG'},
             {'name': "30公尺風速器", 'type': 'ws', 'column' : 'WS30_10mAVG', 'model' : 'WS30_10mAVG'},
@@ -174,6 +174,7 @@ class ContentManager(object):
         # Add dropdown
         plot.update_layout(
             title=_init_feature['name']+ self._feature_type_title[data_type],
+            width=self._this_window_width,
             updatemenus=[dict(
                 type="buttons",
                 direction="up",
