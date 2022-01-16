@@ -465,10 +465,10 @@ class DisplayManager(object):
         display(self._show_wd_button, self._output)
         
     def displayHyperParamDashboard(self):
-        display(widgets.Box([
-            widgets.Label(value='想預測幾筆：'),
-                self._test_period_widget
-        ]), self._output)
+        # display(widgets.Box([
+        #     widgets.Label(value='想預測幾筆：'),
+        #         self._test_period_widget
+        # ]), self._output)
         display(widgets.Box([
             widgets.Label(value='要考慮多少資料：'),
                 self._moving_window_size_widget
